@@ -51,6 +51,8 @@ não conclusões já validadas com usuários.
   limite de requisições, resposta inválida e timeout; encerrar cada chamada
   pendente após dez segundos. JSON malformado, raiz que não seja objeto ou
   estrutura presente com tipo incompatível é falha, mesmo com HTTP bem-sucedido.
+  Fuso ausente ou inválido, inclusive com tipo incorreto, torna o painel
+  correspondente indisponível, conforme RF-03 e RF-04.
   Em geocodificação, resultados ausentes, nulos ou uma lista vazia significam
   nenhuma cidade; resultados presentes que não sejam lista são falha. Campos
   meteorológicos ausentes ou nulos em estrutura válida seguem RF-06. Anunciar
@@ -189,6 +191,9 @@ os critérios às histórias. Os termos Given, When e Then delimitam os cenário
 - **CA-06.3:** Given uma resposta meteorológica sem dados para nenhum painel,
   When a consulta termina, Then ambos informam indisponibilidade sem exibir
   valores anteriores ou zeros no lugar dos ausentes.
+- **CA-06.4:** Given chamadas independentes e previsão válida, When a resposta
+  atual não contém fuso válido, Then somente o painel atual fica indisponível
+  e a previsão permanece visível; o mesmo vale no sentido inverso.
 
 ### RF-07 — Carregamento e falhas
 
@@ -316,7 +321,7 @@ ausente torna o campo obrigatório indisponível; código não listado usa
 | Timeout | Encerrar a chamada pendente após dez segundos, informar o timeout e oferecer nova tentativa manual. |
 | Geocoding sem resultados | Mostrar estado sem resultados, sem selecionar cidade nem iniciar consulta meteorológica para essa busca. |
 | Resposta inválida | Tratar JSON malformado, raiz inválida ou estrutura presente com tipo incompatível como falha, com nova tentativa manual. |
-| Resposta parcial | Omitir campos opcionais ausentes; marcar painel atual ou posição diária indisponível quando faltar campo obrigatório, preservando dados válidos. Sem fuso válido, ambos os painéis ficam indisponíveis. |
+| Resposta parcial | Omitir campos opcionais ausentes; marcar painel atual ou posição diária indisponível quando faltar campo obrigatório, preservando dados válidos. Sem fuso válido, o painel correspondente fica indisponível; dados válidos de chamada independente permanecem visíveis. |
 | Cidades homônimas | Mostrar região e país quando disponíveis e aguardar seleção explícita; não presumir a cidade. |
 | Respostas fora de ordem | Ignorar resultados e erros de chamadas substituídas ou expiradas, inclusive para a mesma cidade e painel. |
 | Troca de cidade durante consulta | Ocultar os dados da cidade anterior e identificar a nova seleção; não associar dados antigos à nova cidade. |
@@ -345,6 +350,7 @@ ausente torna o campo obrigatório indisponível; código não listado usa
 | Cobertura insuficiente ou homônimos indistinguíveis | O destino pode não ser encontrado ou identificado. | Mostrar região e país disponíveis; validar cobertura dos mercados prioritários. |
 | Fuso ou relógio incorreto | Observação ou previsão pode ser atribuída ao dia errado. | Usar fuso da cidade, testar mudança de dia e explicitar a dependência do relógio. |
 | Dados desatualizados ou parciais | Usuário pode tomar decisão com informação incompleta. | Mostrar horário da observação e indisponibilidade, sem preencher lacunas com zero. |
+| Horário tratado como observação instrumental sem confirmação | A interface pode sugerir uma medição que a fonte não fornece. | Validar a natureza do dado e sua rotulagem com a fonte e stakeholders antes da entrega. |
 | Personas e metas não validadas | A experiência pode não atender ao público real. | Validar hipóteses e metas com stakeholders e usuários. |
 
 ## Out of Scope
@@ -371,7 +377,7 @@ ausente torna o campo obrigatório indisponível; código não listado usa
 | US-02 | RF-01, RF-02 | CA-01.1 a CA-01.4; CA-02.1 a CA-02.4 | RNF-01, RNF-02, RNF-03, RNF-04, RNF-06, RNF-07, RNF-08 |
 | US-03 | RF-04 | CA-04.1 a CA-04.6 | RNF-01, RNF-02, RNF-03, RNF-04, RNF-05, RNF-06, RNF-07, RNF-08 |
 | US-04 | RF-05 | CA-05.1 a CA-05.6 | RNF-01, RNF-02, RNF-05, RNF-06, RNF-07, RNF-08 |
-| US-05 | RF-06, RF-09 | CA-06.1 a CA-06.3; CA-09.1 a CA-09.2 | RNF-01, RNF-02, RNF-04, RNF-06, RNF-08 |
+| US-05 | RF-06, RF-09 | CA-06.1 a CA-06.4; CA-09.1 a CA-09.2 | RNF-01, RNF-02, RNF-04, RNF-06, RNF-08 |
 | US-06 | RF-07, RF-08 | CA-07.1 a CA-07.5; CA-08.1 a CA-08.6 | RNF-01 a RNF-04, RNF-06, RNF-08 |
 | US-07 | RF-03, RF-10 | CA-03.1 a CA-03.4; CA-10.1 a CA-10.3 | RNF-01, RNF-02, RNF-05, RNF-06, RNF-08 |
 
@@ -392,12 +398,15 @@ Problemas identificados na versão anterior e correções aplicadas:
 | Ambiguidade | Virada de dia, respostas inválidas e consultas concorrentes para a mesma cidade não tinham comportamento definido. | RF-04, RF-07 e RF-08 e seus critérios definem os estados e a precedência. |
 | Requisito faltante | A atribuição e o mapeamento dos códigos da fonte não estavam definidos. | RF-10, CA-10.3 e a tabela de condições definem a apresentação. |
 | Critério fraco | A medição de desempenho não definia ambiente reproduzível. | RNF-03 define navegador, viewport, limitação de CPU e dados simulados. |
+| Inconsistência | A regra de fuso em resposta parcial afetava ambos os painéis mesmo em chamadas independentes. | RF-07, CA-06.4 e Edge Cases restringem a indisponibilidade ao painel correspondente. |
 
 ## Open Questions
 
-Não há perguntas que bloqueiem o desenvolvimento e a validação do escopo desta
-versão, desde que as hipóteses e decisões provisórias aqui registradas sejam
-aceitas. Antes de lançamento em produção, ainda falta validar com stakeholders
-e usuários a prioridade das personas, os mercados e localidades relevantes, a
-adequação dos campos e as metas de qualidade. Essas validações podem alterar o
-escopo, mas não impedem implementar a versão especificada.
+- **Natureza do horário:** o horário das condições atuais fornecido pelo
+  Open-Meteo representa uma observação instrumental ou dados de modelo? Qual
+  rótulo em pt-BR comunica essa origem sem induzir o usuário a erro? Confirmar
+  com a documentação da fonte e stakeholders antes de definir a rotulagem final
+  e liberar o produto; até essa decisão, RF-03, RF-10 e CA-10.1 são provisórios.
+- Antes de lançamento em produção, validar com stakeholders e usuários a
+  prioridade das personas, os mercados e localidades relevantes, a adequação
+  dos campos e as metas de qualidade. Essas validações podem alterar o escopo.
